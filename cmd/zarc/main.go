@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"github.com/zarc-tech/claude-orchestrator/internal/claude"
+	"github.com/zarc-tech/claude-orchestrator/internal/setup"
 	"github.com/zarc-tech/claude-orchestrator/internal/tmux"
 	"github.com/zarc-tech/claude-orchestrator/internal/tui"
 )
@@ -27,8 +28,7 @@ func main() {
 		Use:   "setup",
 		Short: "Configure tmux, CLAUDE.md, and shell alias",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("zarc setup — coming soon")
-			return nil
+			return setup.Run()
 		},
 	}
 
