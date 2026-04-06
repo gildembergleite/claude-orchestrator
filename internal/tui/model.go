@@ -27,7 +27,7 @@ type AppModel struct {
 	claudeBin  string
 	menu       MenuModel
 	subMenu    MenuModel
-	dirInput   InputModel
+	dirBrowser DirBrowserModel
 	nameInput  InputModel
 	sessions   []tmux.Session
 	selected   string // selected session name
@@ -94,25 +94,8 @@ func (m AppModel) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if chosen := m.menu.Chosen(); chosen != nil {
 		if chosen.ID == "new" {
-			m.dirInput = NewInput("Diretório (Tab completa)", "", func(v string) error {
-				expanded := v
-				if strings.HasPrefix(v, "~/") {
-					home, _ := os.UserHomeDir()
-					expanded = filepath.Join(home, v[2:])
-				}
-				if expanded == "" {
-					return fmt.Errorf("diretório obrigatório")
-				}
-				info, err := os.Stat(expanded)
-				if err != nil {
-					return fmt.Errorf("diretório não encontrado: %s", expanded)
-				}
-				if !info.IsDir() {
-					return fmt.Errorf("não é um diretório: %s", expanded)
-				}
-				return nil
-			})
-			m.dirInput.TabComplete = true
+			cwd, _ := os.Getwd()
+			m.dirBrowser = NewDirBrowser(cwd)
 			m.state = stateNewSessionDir
 			return m, nil
 		}
@@ -135,15 +118,15 @@ func (m AppModel) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m AppModel) updateDirInput(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	m.dirInput, cmd = m.dirInput.Update(msg)
+	m.dirBrowser, cmd = m.dirBrowser.Update(msg)
 
-	if m.dirInput.IsQuitting() {
-		m.quitting = true
-		return m, tea.Quit
+	if m.dirBrowser.IsQuitting() {
+		m.loadMainMenu()
+		return m, nil
 	}
 
-	if m.dirInput.Done() {
-		m.SessionDir = m.dirInput.Result()
+	if m.dirBrowser.Done() {
+		m.SessionDir = m.dirBrowser.Result()
 		defaultName := filepath.Base(m.SessionDir)
 		m.nameInput = NewInput("Nome da sessão", defaultName, nil)
 		m.state = stateNewSessionName
@@ -241,7 +224,7 @@ func (m AppModel) View() string {
 	case stateMainMenu:
 		b.WriteString(m.menu.View())
 	case stateNewSessionDir:
-		b.WriteString(m.dirInput.View())
+		b.WriteString(m.dirBrowser.View())
 	case stateNewSessionName:
 		b.WriteString(m.nameInput.View())
 	case stateSubMenu, stateConfirmKill:
