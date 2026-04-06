@@ -1,9 +1,11 @@
 package setup
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -67,13 +69,42 @@ func Run() error {
 
 	// Step 5: Configure shell alias
 	zarcBin, _ := os.Executable()
-	shellResult, err := ConfigureShellAlias(zarcBin)
+	aliases := promptAliasChoice()
+	shellResult, err := ConfigureShellAliases(zarcBin, aliases)
 	if err != nil {
 		fmt.Printf(" %s Alias — %v\n", warnMark, err)
 	} else {
-		fmt.Printf(" %s Alias configurado (%s)\n", checkMark, shellResult)
+		fmt.Printf(" %s Alias configurado (%s): %s\n", checkMark, shellResult, strings.Join(aliases, ", "))
 	}
 
 	fmt.Printf("\n Pronto! Execute 'zarc' para começar.\n\n")
 	return nil
+}
+
+func promptAliasChoice() []string {
+	fmt.Println()
+	fmt.Println(" Como deseja chamar o CLI?")
+	fmt.Println("   1) zarc + claude (dois aliases)")
+	fmt.Println("   2) Somente zarc")
+	fmt.Println("   3) Nome personalizado")
+	fmt.Print("   Escolha [1/2/3]: ")
+
+	reader := bufio.NewReader(os.Stdin)
+	line, _ := reader.ReadString('\n')
+	choice := strings.TrimSpace(line)
+
+	switch choice {
+	case "1":
+		return []string{"zarc", "claude"}
+	case "3":
+		fmt.Print("   Nome do alias: ")
+		name, _ := reader.ReadString('\n')
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return []string{"zarc"}
+		}
+		return []string{name}
+	default:
+		return []string{"zarc"}
+	}
 }
