@@ -59,6 +59,12 @@ func (m *DirBrowserModel) loadEntries() {
 	m.cursor = 0
 	m.offset = 0
 
+	// Add ../ unless at filesystem root
+	parent := filepath.Dir(m.currentDir)
+	if parent != m.currentDir {
+		m.entries = append(m.entries, "..")
+	}
+
 	dirEntries, err := os.ReadDir(m.currentDir)
 	if err != nil {
 		return
@@ -100,6 +106,19 @@ func (m *DirBrowserModel) enterSelected(name string) {
 	m.loadEntries()
 }
 
+func (m *DirBrowserModel) drillDown() {
+	filtered := m.filteredEntries()
+	if len(filtered) == 0 || m.cursor >= len(filtered) {
+		return
+	}
+	selected := filtered[m.cursor]
+	if selected == ".." {
+		m.goUp()
+		return
+	}
+	m.enterSelected(selected)
+}
+
 func (m *DirBrowserModel) goUp() {
 	parent := filepath.Dir(m.currentDir)
 	if parent == m.currentDir {
@@ -133,17 +152,11 @@ func (m DirBrowserModel) Update(msg tea.Msg) (DirBrowserModel, tea.Cmd) {
 			m.quitting = true
 			return m, nil
 		case "enter":
-			filtered := m.filteredEntries()
-			if len(filtered) > 0 && m.cursor < len(filtered) {
-				m.enterSelected(filtered[m.cursor])
-				return m, nil
-			}
-			// No selection or empty list — confirm current dir
 			m.done = true
 			return m, tea.Quit
-		case "ctrl+d":
-			m.done = true
-			return m, tea.Quit
+		case "tab":
+			m.drillDown()
+			return m, nil
 		case "backspace":
 			if m.filter != "" {
 				m.filter = m.filter[:len(m.filter)-1]
@@ -170,10 +183,7 @@ func (m DirBrowserModel) Update(msg tea.Msg) (DirBrowserModel, tea.Cmd) {
 		case "left":
 			m.goUp()
 		case "right":
-			filtered := m.filteredEntries()
-			if len(filtered) > 0 && m.cursor < len(filtered) {
-				m.enterSelected(filtered[m.cursor])
-			}
+			m.drillDown()
 		default:
 			if len(msg.String()) == 1 {
 				m.filter += msg.String()
@@ -193,7 +203,7 @@ func (m DirBrowserModel) View() string {
 		b.WriteString("/" + m.filter)
 	}
 	b.WriteString("\n")
-	b.WriteString(dirHintStyle.Render("  arrows navigate | enter drill-down/confirm | esc cancel | type to filter"))
+	b.WriteString(dirHintStyle.Render("  ↑↓ navigate | tab/→ enter dir | enter confirm | esc cancel | type to filter"))
 	b.WriteString("\n\n")
 
 	filtered := m.filteredEntries()
@@ -213,7 +223,10 @@ func (m DirBrowserModel) View() string {
 		}
 
 		for i := m.offset; i < end; i++ {
-			name := filtered[i] + "/"
+			name := filtered[i]
+			if name != ".." {
+				name += "/"
+			}
 			if i == m.cursor {
 				b.WriteString(dirSelectedStyle.Render(fmt.Sprintf("  > %s", name)))
 			} else {
