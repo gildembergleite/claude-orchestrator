@@ -8,8 +8,14 @@ Gerenciador de sessões tmux com TUI interativo para Claude Code, com configura�
 
 **Pré-requisito:** [GitHub CLI (`gh`)](https://cli.github.com/) instalado e autenticado, com SSH key configurada no GitHub.
 
+**Zsh/Bash:**
 ```bash
 bash <(gh api repos/zarc-tech/zarc-claude-orchestrator/contents/install.sh --jq '.content' | base64 -d)
+```
+
+**Fish:**
+```fish
+gh api repos/zarc-tech/zarc-claude-orchestrator/contents/install.sh --jq '.content' | base64 -d | bash
 ```
 
 Esse comando instala e configura automaticamente:
