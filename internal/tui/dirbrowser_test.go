@@ -15,9 +15,12 @@ func TestNewDirBrowser_UsesInitialDir(t *testing.T) {
 	if db.currentDir != tmp {
 		t.Fatalf("expected currentDir=%s, got %s", tmp, db.currentDir)
 	}
-	// entries = ".." + 2 subdirs
-	if len(db.entries) != 3 {
-		t.Fatalf("expected 3 entries (.. + 2 subdirs), got %d", len(db.entries))
+	// entries = selectEntry + ".." + 2 subdirs
+	if len(db.entries) != 4 {
+		t.Fatalf("expected 4 entries, got %d: %v", len(db.entries), db.entries)
+	}
+	if db.entries[0] != selectEntry {
+		t.Fatalf("first entry should be selectEntry, got '%s'", db.entries[0])
 	}
 }
 
@@ -27,12 +30,12 @@ func TestNewDirBrowser_HidesHiddenDirs(t *testing.T) {
 	os.MkdirAll(filepath.Join(tmp, "visible"), 0755)
 
 	db := NewDirBrowser(tmp)
-	// entries = ".." + 1 visible
-	if len(db.entries) != 2 {
-		t.Fatalf("expected 2 entries (.. + visible), got %d", len(db.entries))
+	// entries = selectEntry + ".." + visible
+	if len(db.entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d: %v", len(db.entries), db.entries)
 	}
-	if db.entries[1] != "visible" {
-		t.Fatalf("expected 'visible', got '%s'", db.entries[1])
+	if db.entries[2] != "visible" {
+		t.Fatalf("expected 'visible', got '%s'", db.entries[2])
 	}
 }
 
@@ -45,8 +48,9 @@ func TestDirBrowser_FilterByPrefix(t *testing.T) {
 	db := NewDirBrowser(tmp)
 	db.filter = "al"
 	filtered := db.filteredEntries()
-	if len(filtered) != 2 {
-		t.Fatalf("expected 2 filtered entries, got %d", len(filtered))
+	// selectEntry + ".." + alpha + alpha-two
+	if len(filtered) != 4 {
+		t.Fatalf("expected 4 filtered entries, got %d: %v", len(filtered), filtered)
 	}
 }
 
@@ -61,9 +65,9 @@ func TestDirBrowser_DrillDown(t *testing.T) {
 	if db.currentDir != child {
 		t.Fatalf("expected currentDir=%s, got %s", child, db.currentDir)
 	}
-	// entries = ".." + grandchild
-	if len(db.entries) != 2 {
-		t.Fatalf("expected 2 entries (.. + grandchild), got %d", len(db.entries))
+	// entries = selectEntry + ".." + grandchild
+	if len(db.entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d: %v", len(db.entries), db.entries)
 	}
 }
 
@@ -85,5 +89,14 @@ func TestDirBrowser_Result(t *testing.T) {
 	db := NewDirBrowser(tmp)
 	if db.Result() != tmp {
 		t.Fatalf("expected Result()=%s, got %s", tmp, db.Result())
+	}
+}
+
+func TestDirBrowser_SelectEntryConfirms(t *testing.T) {
+	tmp := t.TempDir()
+	db := NewDirBrowser(tmp)
+	// cursor starts at 0 which is selectEntry
+	if db.entries[db.cursor] != selectEntry {
+		t.Fatalf("cursor should start on selectEntry")
 	}
 }

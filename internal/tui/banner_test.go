@@ -18,7 +18,7 @@ func TestRenderBanner_ContainsZARC(t *testing.T) {
 
 func TestRenderBanner_ContainsSubtitle(t *testing.T) {
 	output := RenderBanner()
-	if !strings.Contains(output, "Claude Code") {
-		t.Fatal("banner should contain 'Claude Code' subtitle")
+	if !strings.Contains(output, "persistência") {
+		t.Fatal("banner should contain subtitle")
 	}
 }

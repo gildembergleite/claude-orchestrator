@@ -12,6 +12,7 @@ import (
 
 var (
 	dirSelectedStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	dirConfirmStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2")) // green
 	dirNormalStyle   = lipgloss.NewStyle().Faint(true)
 	dirPathStyle     = lipgloss.NewStyle().Bold(true)
 	dirHintStyle     = lipgloss.NewStyle().Faint(true)
@@ -19,10 +20,12 @@ var (
 
 const maxVisible = 10
 
+const selectEntry = "__select__"
+
 // DirBrowserModel is a visual directory navigator with drill-down.
 type DirBrowserModel struct {
 	currentDir string
-	entries    []string // visible directory names
+	entries    []string // visible directory names (first is selectEntry)
 	filter     string   // typed prefix filter
 	cursor     int
 	offset     int // scroll offset
@@ -36,6 +39,7 @@ func NewDirBrowser(initialDir string) DirBrowserModel {
 		currentDir: initialDir,
 	}
 	m.loadEntries()
+	m.cursor = 0 // first open: cursor on [Selecionar] for quick Enter
 	return m
 }
 
@@ -56,8 +60,10 @@ func (m DirBrowserModel) Result() string {
 
 func (m *DirBrowserModel) loadEntries() {
 	m.entries = nil
-	m.cursor = 0
 	m.offset = 0
+
+	// First entry is always the "select this dir" option
+	m.entries = append(m.entries, selectEntry)
 
 	// Add ../ unless at filesystem root
 	parent := filepath.Dir(m.currentDir)
@@ -79,15 +85,27 @@ func (m *DirBrowserModel) loadEntries() {
 		}
 		m.entries = append(m.entries, e.Name())
 	}
+
+	// Start cursor on ".." if it exists, otherwise on first dir
+	if len(m.entries) > 1 && m.entries[1] == ".." {
+		m.cursor = 1
+	} else {
+		m.cursor = 0
+	}
 }
 
 func (m DirBrowserModel) filteredEntries() []string {
 	if m.filter == "" {
 		return m.entries
 	}
-	var result []string
 	lower := strings.ToLower(m.filter)
+	// Always keep selectEntry and .. in filtered results
+	var result []string
 	for _, e := range m.entries {
+		if e == selectEntry || e == ".." {
+			result = append(result, e)
+			continue
+		}
 		if strings.HasPrefix(strings.ToLower(e), lower) {
 			result = append(result, e)
 		}
@@ -104,19 +122,6 @@ func (m *DirBrowserModel) enterSelected(name string) {
 	m.currentDir = next
 	m.filter = ""
 	m.loadEntries()
-}
-
-func (m *DirBrowserModel) drillDown() {
-	filtered := m.filteredEntries()
-	if len(filtered) == 0 || m.cursor >= len(filtered) {
-		return
-	}
-	selected := filtered[m.cursor]
-	if selected == ".." {
-		m.goUp()
-		return
-	}
-	m.enterSelected(selected)
 }
 
 func (m *DirBrowserModel) goUp() {
@@ -152,11 +157,22 @@ func (m DirBrowserModel) Update(msg tea.Msg) (DirBrowserModel, tea.Cmd) {
 			m.quitting = true
 			return m, nil
 		case "enter":
-			m.done = true
-			return m, tea.Quit
-		case "tab":
-			m.drillDown()
-			return m, nil
+			filtered := m.filteredEntries()
+			if m.cursor >= len(filtered) {
+				return m, nil
+			}
+			selected := filtered[m.cursor]
+			switch selected {
+			case selectEntry:
+				m.done = true
+				return m, tea.Quit
+			case "..":
+				m.goUp()
+				return m, nil
+			default:
+				m.enterSelected(selected)
+				return m, nil
+			}
 		case "backspace":
 			if m.filter != "" {
 				m.filter = m.filter[:len(m.filter)-1]
@@ -180,10 +196,6 @@ func (m DirBrowserModel) Update(msg tea.Msg) (DirBrowserModel, tea.Cmd) {
 					m.offset = m.cursor - maxVisible + 1
 				}
 			}
-		case "left":
-			m.goUp()
-		case "right":
-			m.drillDown()
 		default:
 			if len(msg.String()) == 1 {
 				m.filter += msg.String()
@@ -198,32 +210,37 @@ func (m DirBrowserModel) Update(msg tea.Msg) (DirBrowserModel, tea.Cmd) {
 func (m DirBrowserModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(dirPathStyle.Render("Diretório: " + m.displayPath()))
+	b.WriteString(dirPathStyle.Render("Diretorio: " + m.displayPath()))
 	if m.filter != "" {
 		b.WriteString("/" + m.filter)
 	}
 	b.WriteString("\n")
-	b.WriteString(dirHintStyle.Render("  ↑↓ navigate | tab/→ enter dir | enter confirm | esc cancel | type to filter"))
+	b.WriteString(dirHintStyle.Render("  enter selecionar | delete voltar | esc cancelar | digite para filtrar"))
 	b.WriteString("\n\n")
 
 	filtered := m.filteredEntries()
 
-	if len(filtered) == 0 {
-		b.WriteString(dirNormalStyle.Render("  (sem subdiretórios)"))
+	end := m.offset + maxVisible
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+
+	if m.offset > 0 {
+		b.WriteString(dirHintStyle.Render("  ... mais itens"))
 		b.WriteString("\n")
-	} else {
-		end := m.offset + maxVisible
-		if end > len(filtered) {
-			end = len(filtered)
-		}
+	}
 
-		if m.offset > 0 {
-			b.WriteString(dirHintStyle.Render("  ↑ mais itens"))
-			b.WriteString("\n")
-		}
-
-		for i := m.offset; i < end; i++ {
-			name := filtered[i]
+	for i := m.offset; i < end; i++ {
+		entry := filtered[i]
+		if entry == selectEntry {
+			label := fmt.Sprintf("[Selecionar: %s]", m.displayPath())
+			if i == m.cursor {
+				b.WriteString(dirConfirmStyle.Render(fmt.Sprintf("  > %s", label)))
+			} else {
+				b.WriteString(dirNormalStyle.Render(fmt.Sprintf("    %s", label)))
+			}
+		} else {
+			name := entry
 			if name != ".." {
 				name += "/"
 			}
@@ -232,13 +249,13 @@ func (m DirBrowserModel) View() string {
 			} else {
 				b.WriteString(dirNormalStyle.Render(fmt.Sprintf("    %s", name)))
 			}
-			b.WriteString("\n")
 		}
+		b.WriteString("\n")
+	}
 
-		if end < len(filtered) {
-			b.WriteString(dirHintStyle.Render("  ↓ mais itens"))
-			b.WriteString("\n")
-		}
+	if end < len(filtered) {
+		b.WriteString(dirHintStyle.Render("  ... mais itens"))
+		b.WriteString("\n")
 	}
 
 	return b.String()
