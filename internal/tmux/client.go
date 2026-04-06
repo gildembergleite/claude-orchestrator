@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -49,14 +50,65 @@ func NewSession(bin, name, dir, command string) error {
 }
 
 // AttachSession attaches to an existing tmux session.
-// This replaces the current process.
 func AttachSession(bin, name string) error {
-	return execReplace(bin, "attach-session", "-t", name)
+	cmd := exec.Command(bin, "attach-session", "-t", name)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// SwitchSession switches to another session (used when already inside tmux).
+func SwitchSession(bin, name string) error {
+	return exec.Command(bin, "switch-client", "-t", name).Run()
 }
 
 // KillSession kills a tmux session.
 func KillSession(bin, name string) error {
 	return exec.Command(bin, "kill-session", "-t", name).Run()
+}
+
+// RestoreIfNeeded restores tmux sessions from tmux-resurrect save file
+// when no sessions exist (e.g. after a reboot).
+func RestoreIfNeeded(bin string) {
+	sessions, _ := ListSessions(bin)
+	if len(sessions) > 0 {
+		return
+	}
+
+	home, _ := os.UserHomeDir()
+
+	// Find resurrect save file
+	resurrectDir := filepath.Join(home, ".local", "share", "tmux", "resurrect")
+	lastFile := filepath.Join(resurrectDir, "last")
+	if _, err := os.Stat(lastFile); err != nil {
+		resurrectDir = filepath.Join(home, ".tmux", "resurrect")
+		lastFile = filepath.Join(resurrectDir, "last")
+		if _, err := os.Stat(lastFile); err != nil {
+			return
+		}
+	}
+
+	restoreScript := filepath.Join(home, ".tmux", "plugins", "tmux-resurrect", "scripts", "restore.sh")
+	if _, err := os.Stat(restoreScript); err != nil {
+		return
+	}
+
+	// Need a running server to restore — create a temp session
+	tmpSession := "zarc-restore"
+	if err := exec.Command(bin, "new-session", "-d", "-s", tmpSession).Run(); err != nil {
+		return
+	}
+
+	// Set resurrect-dir explicitly so the restore script finds save files
+	// (TPM may not have finished loading the plugin yet)
+	exec.Command(bin, "set-option", "-g", "@resurrect-dir", resurrectDir).Run()
+
+	// Run resurrect restore (blocks until done)
+	exec.Command(bin, "run-shell", restoreScript).Run()
+
+	// Remove temp session
+	exec.Command(bin, "kill-session", "-t", tmpSession).Run()
 }
 
 // CurrentSessionName returns the name of the current tmux session.
