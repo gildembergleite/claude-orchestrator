@@ -23,13 +23,15 @@ func main() {
 		RunE:    runTUI,
 	}
 
+	var noAlias bool
 	setupCmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Configure tmux, CLAUDE.md, and shell alias",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return setup.Run()
+			return setup.Run(noAlias)
 		},
 	}
+	setupCmd.Flags().BoolVar(&noAlias, "no-alias", false, "Skip alias prompt, use default 'zarc'")
 
 	rootCmd.AddCommand(setupCmd)
 

@@ -138,7 +138,7 @@ if [ -n "$ZARC_BIN" ] && [ -f "$ZARC_BIN" ]; then
   echo ""
   echo " Executando zarc setup..."
   echo ""
-  "$ZARC_BIN" setup
+  "$ZARC_BIN" setup --no-alias
 else
   warn "Binário zarc não encontrado — rode 'zarc setup' manualmente após reiniciar o terminal"
 fi

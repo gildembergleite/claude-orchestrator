@@ -15,7 +15,8 @@ var (
 )
 
 // Run executes all setup steps in order.
-func Run() error {
+// If skipAlias is true, skips the interactive alias prompt and uses default "zarc".
+func Run(skipAlias bool) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("could not determine home directory: %w", err)
@@ -69,7 +70,12 @@ func Run() error {
 
 	// Step 5: Configure shell alias
 	zarcBin, _ := os.Executable()
-	aliases := promptAliasChoice()
+	var aliases []string
+	if skipAlias {
+		aliases = []string{"zarc"}
+	} else {
+		aliases = promptAliasChoice()
+	}
 	shellResult, err := ConfigureShellAliases(zarcBin, aliases)
 	if err != nil {
 		fmt.Printf(" %s Alias — %v\n", warnMark, err)
