@@ -23,6 +23,9 @@ type InputModel struct {
 	Value       string
 	Err         string
 	Validate    func(string) error
+	TabComplete bool // enable directory tab completion
+	completions []string
+	compIndex   int
 	done        bool
 	quitting    bool
 }
@@ -81,19 +84,86 @@ func (m InputModel) Update(msg tea.Msg) (InputModel, tea.Cmd) {
 			}
 			m.done = true
 			return m, tea.Quit
+		case "tab":
+			if m.TabComplete {
+				m.handleTabComplete()
+			}
 		case "backspace":
 			if len(m.Value) > 0 {
 				m.Value = m.Value[:len(m.Value)-1]
 			}
 			m.Err = ""
+			m.completions = nil
 		default:
 			if len(msg.String()) == 1 {
 				m.Value += msg.String()
 				m.Err = ""
+				m.completions = nil
 			}
 		}
 	}
 	return m, nil
+}
+
+func (m *InputModel) handleTabComplete() {
+	value := m.Value
+	if value == "" {
+		value = "~/"
+		m.Value = value
+	}
+
+	// Expand ~ for lookup
+	expanded := value
+	if strings.HasPrefix(expanded, "~/") {
+		home, _ := os.UserHomeDir()
+		expanded = filepath.Join(home, expanded[2:])
+	}
+
+	if m.completions == nil {
+		// Build completions list
+		dir := expanded
+		prefix := ""
+		if info, err := os.Stat(expanded); err != nil || !info.IsDir() {
+			dir = filepath.Dir(expanded)
+			prefix = filepath.Base(expanded)
+		}
+
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return
+		}
+
+		var matches []string
+		for _, e := range entries {
+			if !e.IsDir() {
+				continue
+			}
+			if strings.HasPrefix(e.Name(), ".") {
+				continue
+			}
+			if prefix == "" || strings.HasPrefix(strings.ToLower(e.Name()), strings.ToLower(prefix)) {
+				full := filepath.Join(dir, e.Name()) + "/"
+				// Convert back to ~/
+				home, _ := os.UserHomeDir()
+				if strings.HasPrefix(full, home) {
+					full = "~" + full[len(home):]
+				}
+				matches = append(matches, full)
+			}
+		}
+
+		if len(matches) == 0 {
+			return
+		}
+		m.completions = matches
+		m.compIndex = 0
+	} else {
+		// Cycle through completions
+		m.compIndex = (m.compIndex + 1) % len(m.completions)
+	}
+
+	m.Value = m.completions[m.compIndex]
+	m.Err = ""
 }
 
 func (m InputModel) View() string {
