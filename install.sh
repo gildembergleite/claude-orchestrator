@@ -74,26 +74,33 @@ else
   step "GOPRIVATE configurado"
 fi
 
-# 8. PATH — adicionar $HOME/go/bin
-GOBIN="$HOME/go/bin"
+# 8. PATH — detectar GOBIN real e adicionar ao PATH
+GOBIN=$(go env GOBIN 2>/dev/null)
+if [ -z "$GOBIN" ]; then
+  GOBIN="$(go env GOPATH 2>/dev/null)/bin"
+fi
+if [ -z "$GOBIN" ] || [ "$GOBIN" = "/bin" ]; then
+  GOBIN="$HOME/go/bin"
+fi
+
 SHELL_NAME=$(basename "$SHELL")
 
 add_to_path_rc() {
   local rc_file="$1"
-  local export_line="export PATH=\"\$HOME/go/bin:\$PATH\""
-  if [ -f "$rc_file" ] && grep -q 'go/bin' "$rc_file"; then
+  local gobin_path="$2"
+  if [ -f "$rc_file" ] && grep -q "$gobin_path" "$rc_file"; then
     skip "PATH go/bin ($SHELL_NAME)"
   else
     echo "" >> "$rc_file"
-    echo "# go bin" >> "$rc_file"
-    echo "$export_line" >> "$rc_file"
+    echo "# go bin — Claude Orchestrator" >> "$rc_file"
+    echo "export PATH=\"$gobin_path:\$PATH\"" >> "$rc_file"
     step "PATH atualizado ($SHELL_NAME — $rc_file)"
   fi
 }
 
 case "$SHELL_NAME" in
   fish)
-    if fish -c 'echo $PATH' 2>/dev/null | grep -q "go/bin"; then
+    if fish -c 'echo $PATH' 2>/dev/null | grep -q "$GOBIN"; then
       skip "PATH go/bin (fish)"
     else
       fish -c "set -Ua fish_user_paths $GOBIN" 2>/dev/null
@@ -101,17 +108,17 @@ case "$SHELL_NAME" in
     fi
     ;;
   zsh)
-    add_to_path_rc "$HOME/.zshrc"
+    add_to_path_rc "$HOME/.zshrc" "$GOBIN"
     ;;
   bash)
-    add_to_path_rc "$HOME/.bashrc"
+    add_to_path_rc "$HOME/.bashrc" "$GOBIN"
     ;;
   *)
     warn "Shell '$SHELL_NAME' não reconhecido — adicione $GOBIN ao PATH manualmente"
     ;;
 esac
 
-# Garantir que go/bin está no PATH desta sessão
+# Garantir que GOBIN está no PATH desta sessão
 export PATH="$GOBIN:$PATH"
 
 # 9. Instalar zarc
@@ -120,11 +127,21 @@ echo " Instalando zarc..."
 go install github.com/zarc-tech/zarc-claude-orchestrator/cmd/zarc@latest
 step "zarc instalado"
 
-# 10. Rodar zarc setup
-echo ""
-echo " Executando zarc setup..."
-echo ""
-"$GOBIN/zarc" setup
+# 10. Localizar o binário instalado e rodar setup
+ZARC_BIN=$(command -v zarc 2>/dev/null || echo "$GOBIN/zarc")
+if [ ! -f "$ZARC_BIN" ]; then
+  # Fallback: procurar onde go install colocou
+  ZARC_BIN=$(find "$(go env GOPATH)" -name zarc -type f 2>/dev/null | head -1)
+fi
+
+if [ -n "$ZARC_BIN" ] && [ -f "$ZARC_BIN" ]; then
+  echo ""
+  echo " Executando zarc setup..."
+  echo ""
+  "$ZARC_BIN" setup
+else
+  warn "Binário zarc não encontrado — rode 'zarc setup' manualmente após reiniciar o terminal"
+fi
 
 echo ""
 echo " ─────────────────────────────────────────────"

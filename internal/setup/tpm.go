@@ -35,15 +35,31 @@ func InstallTPM(pluginsDir string) (TPMResult, error) {
 		result.Cloned = true
 	}
 
-	// Install plugins
+	// Install plugins — requires a tmux server running with our config
 	installScript := filepath.Join(tpmDir, "bin", "install_plugins")
 	if _, err := os.Stat(installScript); err == nil {
-		cmd := exec.Command(installScript)
-		if err := cmd.Run(); err != nil {
-			// Non-fatal: plugins can be installed later via prefix + I
-			return result, nil
+		// Start a temporary tmux server to install plugins
+		home, _ := os.UserHomeDir()
+		tmuxConf := filepath.Join(home, ".tmux.conf")
+		tmpSession := "zarc-tpm-install"
+
+		// Start detached session with our config
+		startCmd := exec.Command("tmux", "-f", tmuxConf, "new-session", "-d", "-s", tmpSession)
+		if err := startCmd.Run(); err == nil {
+			// Give tpm a moment to initialize
+			cmd := exec.Command(installScript)
+			if err := cmd.Run(); err == nil {
+				result.PluginsInstalled = true
+			}
+			// Kill the temporary session
+			exec.Command("tmux", "kill-session", "-t", tmpSession).Run()
+		} else {
+			// Fallback: try without server (may fail silently)
+			cmd := exec.Command(installScript)
+			if err := cmd.Run(); err == nil {
+				result.PluginsInstalled = true
+			}
 		}
-		result.PluginsInstalled = true
 	}
 
 	return result, nil
