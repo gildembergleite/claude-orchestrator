@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -50,22 +49,10 @@ func runTUI(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// If already inside tmux, launch claude directly
-	if tmux.IsInsideTmux() {
-		fmt.Printf("\033[32m>\033[0m Inside tmux \033[1m%s\033[0m. Launching Claude Code...\n\n",
-			tmux.CurrentSessionName(tmuxBin))
+	insideTmux := tmux.IsInsideTmux()
 
-		parts := strings.Fields(claudeBin)
-		if len(parts) > 1 {
-			// npx fallback
-			c := exec.Command(parts[0], append(parts[1:], args...)...)
-			c.Stdin = os.Stdin
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			return c.Run()
-		}
-		return tmux.ExecReplace(claudeBin, args...)
-	}
+	// Restore sessions from resurrect if none exist (e.g. after reboot)
+	tmux.RestoreIfNeeded(tmuxBin)
 
 	// Run TUI
 	app := tui.NewApp(tmuxBin, claudeBin)
@@ -86,16 +73,17 @@ func runTUI(cmd *cobra.Command, args []string) error {
 		if err := tmux.NewSession(tmuxBin, m.SessionName, m.SessionDir, claudeCmd); err != nil {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
+		if insideTmux {
+			return tmux.SwitchSession(tmuxBin, m.SessionName)
+		}
 		return tmux.AttachSession(tmuxBin, m.SessionName)
 
 	case "attach":
+		if insideTmux {
+			return tmux.SwitchSession(tmuxBin, m.SessionName)
+		}
 		return tmux.AttachSession(tmuxBin, m.SessionName)
 
-	case "kill":
-		if err := tmux.KillSession(tmuxBin, m.SessionName); err != nil {
-			return fmt.Errorf("failed to kill session: %w", err)
-		}
-		fmt.Printf("  \033[32mSessão '%s' encerrada.\033[0m\n", m.SessionName)
 	}
 
 	return nil

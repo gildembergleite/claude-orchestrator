@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/zarc-tech/claude-orchestrator/internal/tmux"
 )
 
@@ -20,8 +19,6 @@ const (
 	stateSubMenu
 	stateConfirmKill
 )
-
-var successStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")) // green
 
 // AppModel is the top-level bubbletea model.
 type AppModel struct {
@@ -97,7 +94,7 @@ func (m AppModel) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if chosen := m.menu.Chosen(); chosen != nil {
 		if chosen.ID == "new" {
-			m.dirInput = NewInput("Diretório", "", func(v string) error {
+			m.dirInput = NewInput("Diretório (Tab completa)", "", func(v string) error {
 				expanded := v
 				if strings.HasPrefix(v, "~/") {
 					home, _ := os.UserHomeDir()
@@ -115,6 +112,7 @@ func (m AppModel) updateMainMenu(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return nil
 			})
+			m.dirInput.TabComplete = true
 			m.state = stateNewSessionDir
 			return m, nil
 		}
@@ -218,9 +216,9 @@ func (m AppModel) updateConfirmKill(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if chosen := m.subMenu.Chosen(); chosen != nil {
 		if chosen.ID == "yes" {
-			m.SessionName = m.selected
-			m.Action = "kill"
-			return m, tea.Quit
+			tmux.KillSession(m.tmuxBin, m.selected)
+			m.loadMainMenu()
+			return m, nil
 		}
 		// "no" — go back to main menu
 		m.loadMainMenu()
