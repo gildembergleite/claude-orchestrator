@@ -3,7 +3,6 @@ package setup
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -24,35 +23,35 @@ func DetectShell() string {
 	return "unknown"
 }
 
-// ConfigureShellAlias sets up the zarc alias/function for the detected shell.
-// Returns a description of what was done, or empty string if skipped.
+// ConfigureShellAlias sets up a single zarc alias (backward compat).
 func ConfigureShellAlias(zarcBin string) (string, error) {
-	// Check if zarc is already in PATH
-	if path, err := exec.LookPath("zarc"); err == nil && path != "" {
-		return "zarc já está no PATH", nil
-	}
+	return ConfigureShellAliases(zarcBin, []string{"zarc"})
+}
 
+// ConfigureShellAliases sets up shell aliases for the given names.
+// Each name in aliases will point to zarcBin.
+func ConfigureShellAliases(zarcBin string, aliases []string) (string, error) {
 	shell := DetectShell()
 	home, _ := os.UserHomeDir()
 
 	switch shell {
 	case "fish":
 		dir := filepath.Join(home, ".config", "fish", "functions")
-		if err := configureShellFish(dir, zarcBin); err != nil {
+		if err := configureShellFishAliases(dir, zarcBin, aliases); err != nil {
 			return "", err
 		}
 		return "fish", nil
 
 	case "zsh":
 		rc := filepath.Join(home, ".zshrc")
-		if err := configureShellRC(rc, zarcBin); err != nil {
+		if err := configureShellRCAliases(rc, zarcBin, aliases); err != nil {
 			return "", err
 		}
 		return "zsh", nil
 
 	case "bash":
 		rc := filepath.Join(home, ".bashrc")
-		if err := configureShellRC(rc, zarcBin); err != nil {
+		if err := configureShellRCAliases(rc, zarcBin, aliases); err != nil {
 			return "", err
 		}
 		return "bash", nil
@@ -62,32 +61,37 @@ func ConfigureShellAlias(zarcBin string) (string, error) {
 	}
 }
 
+// configureShellFish creates a single zarc.fish function file (backward compat for tests).
 func configureShellFish(functionsDir, zarcBin string) error {
+	return configureShellFishAliases(functionsDir, zarcBin, []string{"zarc"})
+}
+
+func configureShellFishAliases(functionsDir, zarcBin string, aliases []string) error {
 	if err := os.MkdirAll(functionsDir, 0755); err != nil {
 		return err
 	}
 
-	fishFile := filepath.Join(functionsDir, "zarc.fish")
-
-	// Idempotent check
-	if _, err := os.Stat(fishFile); err == nil {
-		return nil
+	for _, name := range aliases {
+		fishFile := filepath.Join(functionsDir, name+".fish")
+		if _, err := os.Stat(fishFile); err == nil {
+			continue // already exists
+		}
+		content := fmt.Sprintf("function %s --description 'Claude Code + tmux session launcher'\n  %s $argv\nend\n", name, zarcBin)
+		if err := os.WriteFile(fishFile, []byte(content), 0644); err != nil {
+			return err
+		}
 	}
-
-	content := fmt.Sprintf(`function zarc --description 'Claude Code + tmux session launcher'
-  %s $argv
-end
-`, zarcBin)
-
-	return os.WriteFile(fishFile, []byte(content), 0644)
+	return nil
 }
 
+// configureShellRC creates a single zarc alias in an RC file (backward compat for tests).
 func configureShellRC(rcPath, zarcBin string) error {
-	existing, _ := os.ReadFile(rcPath)
+	return configureShellRCAliases(rcPath, zarcBin, []string{"zarc"})
+}
 
-	if strings.Contains(string(existing), "alias zarc=") {
-		return nil // already configured
-	}
+func configureShellRCAliases(rcPath, zarcBin string, aliases []string) error {
+	existing, _ := os.ReadFile(rcPath)
+	content := string(existing)
 
 	f, err := os.OpenFile(rcPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -95,7 +99,15 @@ func configureShellRC(rcPath, zarcBin string) error {
 	}
 	defer f.Close()
 
-	line := fmt.Sprintf("\n# zarc — Claude Code orchestrator\nalias zarc=\"%s\"\n", zarcBin)
-	_, err = f.WriteString(line)
-	return err
+	for _, name := range aliases {
+		marker := fmt.Sprintf("alias %s=", name)
+		if strings.Contains(content, marker) {
+			continue // already configured
+		}
+		line := fmt.Sprintf("\n# %s — Claude Code orchestrator\nalias %s=\"%s\"\n", name, name, zarcBin)
+		if _, err := f.WriteString(line); err != nil {
+			return err
+		}
+	}
+	return nil
 }
