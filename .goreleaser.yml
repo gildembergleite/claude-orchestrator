@@ -29,7 +29,7 @@ brews:
       name: homebrew-tools
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     directory: Formula
-    homepage: "https://github.com/zarc-tech/claude-orchestrator"
+    homepage: "https://github.com/zarc-tech/zarc-claude-orchestrator"
     description: "Claude Code + tmux session launcher"
     license: "MIT"
     install: |

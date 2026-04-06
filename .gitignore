@@ -4,3 +4,4 @@ dist/
 *.dylib
 *.so
 .DS_Store
+zarc

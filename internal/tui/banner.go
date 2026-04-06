@@ -29,5 +29,5 @@ func RenderBanner() string {
 	main := bannerStyle.Render(bannerMain)
 	sub := bannerSubStyle.Render(bannerSub)
 	subtitle := subtitleStyle.Render(" Gerenciamento de persistência de sessões")
-	return main + "\n" + sub + "\n" + subtitle + "\n"
+	return "\n" + main + "\n" + sub + "\n\n" + subtitle + "\n"
 }

@@ -1,16 +1,90 @@
-# zarc
+# Claude Orchestrator
 
-Claude Code + tmux session launcher.
+Gerenciamento de persistência de sessões Claude Code.
 
 Gerenciador de sessões tmux com TUI interativo para Claude Code, com configuração automatizada do ambiente de desenvolvimento.
+
+## Pré-requisitos
+
+### 1. Instalar Go
+
+**macOS (Homebrew):**
+```bash
+brew install go
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install -y golang-go
+```
+
+**Ou baixe diretamente:** https://go.dev/dl/
+
+Verifique a instalação:
+```bash
+go version
+```
+
+### 2. Configurar o GOPATH no PATH
+
+Certifique-se de que `$GOPATH/bin` está no seu PATH.
+
+**Fish:**
+```fish
+fish_add_path $HOME/go/bin
+```
+
+**Zsh/Bash:** adicione ao `~/.zshrc` ou `~/.bashrc`:
+```bash
+export PATH="$HOME/go/bin:$PATH"
+```
+
+Recarregue o terminal após a alteração.
+
+### 3. Instalar tmux
+
+**macOS:**
+```bash
+brew install tmux
+```
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt install -y tmux
+```
+
+### 4. Instalar Claude Code
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
 
 ## Instalação
 
 ```bash
-brew tap zarc-tech/tools
-brew install zarc
+go install github.com/zarc-tech/zarc-claude-orchestrator/cmd/zarc@latest
+```
+
+Verifique a instalação:
+```bash
+zarc --help
+```
+
+## Configuração inicial
+
+Após a instalação, rode o setup para configurar o ambiente:
+
+```bash
 zarc setup
 ```
+
+O setup irá:
+1. **Verificar dependências** — tmux, Claude Code, git
+2. **Configurar tmux** — cria `~/.tmux/zarc.conf` com resurrect + continuum
+3. **Instalar tpm** — gerenciador de plugins do tmux
+4. **Configurar CLAUDE.md** — adiciona memória persistente por projeto
+5. **Configurar alias** — escolha entre `zarc + claude`, só `zarc`, ou nome personalizado
 
 ## Uso
 
@@ -18,17 +92,17 @@ zarc setup
 # Abrir o TUI (criar/gerenciar sessões)
 zarc
 
-# Configurar o ambiente (tmux, CLAUDE.md, alias)
+# Reconfigurar o ambiente
 zarc setup
 ```
 
-## O que o `zarc setup` configura
+### Navegação no TUI
 
-1. **Verifica dependências** — tmux, Claude Code, git
-2. **Configura tmux** — cria `~/.tmux/zarc.conf` com resurrect + continuum
-3. **Instala tpm** — gerenciador de plugins do tmux
-4. **Configura CLAUDE.md** — adiciona memória persistente por projeto
-5. **Configura alias** — detecta fish/zsh/bash automaticamente
+- **Setas** — navegar na lista
+- **Enter** — selecionar/entrar no diretório
+- **Delete/Backspace** — voltar ao diretório anterior
+- **Esc** — cancelar
+- **Digite** — filtrar diretórios por nome
 
 ## Desenvolvimento
 

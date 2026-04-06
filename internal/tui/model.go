@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/zarc-tech/claude-orchestrator/internal/tmux"
+	"github.com/zarc-tech/zarc-claude-orchestrator/internal/tmux"
 )
 
 type state int
