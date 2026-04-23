@@ -10,12 +10,12 @@ Gerenciador de sessões tmux com TUI interativo para Claude Code, com configura�
 
 **Zsh/Bash:**
 ```bash
-bash <(gh api repos/zarc-tech/zarc-claude-orchestrator/contents/install.sh --jq '.content' | base64 -d)
+bash <(gh api repos/zarc-tech/claude-orchestrator/contents/install.sh --jq '.content' | base64 -d)
 ```
 
 **Fish:**
 ```fish
-gh api repos/zarc-tech/zarc-claude-orchestrator/contents/install.sh --jq '.content' | base64 -d | bash
+gh api repos/zarc-tech/claude-orchestrator/contents/install.sh --jq '.content' | base64 -d | bash
 ```
 
 Esse comando instala e configura automaticamente:
@@ -24,21 +24,21 @@ Esse comando instala e configura automaticamente:
 - Git SSH para repos privados zarc-tech
 - GOPRIVATE para Go modules
 - PATH do Go
-- zarc CLI + setup completo do ambiente
+- claude-orchestrator CLI + setup completo do ambiente
 
 Após a instalação, reinicie o terminal e execute:
 ```bash
-zarc
+claude-orchestrator
 ```
 
 ## Uso
 
 ```bash
 # Abrir o TUI (criar/gerenciar sessões)
-zarc
+claude-orchestrator
 
 # Reconfigurar o ambiente
-zarc setup
+claude-orchestrator setup
 ```
 
 ### Navegação no TUI
@@ -49,13 +49,13 @@ zarc setup
 - **Esc** — cancelar
 - **Digite** — filtrar diretórios por nome
 
-## O que o `zarc setup` configura
+## O que o `claude-orchestrator setup` configura
 
 1. **Verifica dependências** — tmux, Claude Code, git
-2. **Configura tmux** — cria `~/.tmux/zarc.conf` com resurrect + continuum
+2. **Configura tmux** — cria `~/.tmux/claude-orchestrator.conf` com resurrect + continuum
 3. **Instala tpm** — gerenciador de plugins do tmux
 4. **Configura CLAUDE.md** — adiciona memória persistente por projeto
-5. **Configura alias** — escolha entre `zarc + claude`, só `zarc`, ou nome personalizado
+5. **Configura alias** — escolha entre `claude-orchestrator + co`, só `claude-orchestrator`, ou nome personalizado
 
 ## Desenvolvimento
 

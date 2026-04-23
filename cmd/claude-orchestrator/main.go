@@ -7,17 +7,17 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"github.com/zarc-tech/zarc-claude-orchestrator/internal/claude"
-	"github.com/zarc-tech/zarc-claude-orchestrator/internal/setup"
-	"github.com/zarc-tech/zarc-claude-orchestrator/internal/tmux"
-	"github.com/zarc-tech/zarc-claude-orchestrator/internal/tui"
+	"github.com/zarc-tech/claude-orchestrator/internal/claude"
+	"github.com/zarc-tech/claude-orchestrator/internal/setup"
+	"github.com/zarc-tech/claude-orchestrator/internal/tmux"
+	"github.com/zarc-tech/claude-orchestrator/internal/tui"
 )
 
 var version = "dev"
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:     "zarc",
+		Use:     "claude-orchestrator",
 		Short:   "Claude Code + tmux session launcher",
 		Version: version,
 		RunE:    runTUI,
@@ -31,7 +31,7 @@ func main() {
 			return setup.Run(noAlias)
 		},
 	}
-	setupCmd.Flags().BoolVar(&noAlias, "no-alias", false, "Skip alias prompt, use default 'zarc'")
+	setupCmd.Flags().BoolVar(&noAlias, "no-alias", false, "Skip alias prompt, use default 'claude-orchestrator'")
 
 	rootCmd.AddCommand(setupCmd)
 
@@ -75,6 +75,7 @@ func runTUI(cmd *cobra.Command, args []string) error {
 		if err := tmux.NewSession(tmuxBin, m.SessionName, m.SessionDir, claudeCmd); err != nil {
 			return fmt.Errorf("failed to create session: %w", err)
 		}
+		tmux.RegisterSession(m.SessionName, m.SessionDir)
 		if insideTmux {
 			return tmux.SwitchSession(tmuxBin, m.SessionName)
 		}

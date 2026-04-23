@@ -1,6 +1,6 @@
 version: 2
 
-project_name: zarc
+project_name: claude-orchestrator
 
 before:
   hooks:
@@ -8,8 +8,8 @@ before:
     - go test ./...
 
 builds:
-  - main: ./cmd/zarc
-    binary: zarc
+  - main: ./cmd/claude-orchestrator
+    binary: claude-orchestrator
     ldflags:
       - -s -w -X main.version={{.Version}}
     goos:
@@ -29,13 +29,13 @@ brews:
       name: homebrew-tools
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     directory: Formula
-    homepage: "https://github.com/zarc-tech/zarc-claude-orchestrator"
+    homepage: "https://github.com/zarc-tech/claude-orchestrator"
     description: "Claude Code + tmux session launcher"
     license: "MIT"
     install: |
-      bin.install "zarc"
+      bin.install "claude-orchestrator"
     test: |
-      system "#{bin}/zarc", "--version"
+      system "#{bin}/claude-orchestrator", "--version"
 
 checksum:
   name_template: "checksums.txt"

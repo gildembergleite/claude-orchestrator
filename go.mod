@@ -1,4 +1,4 @@
-module github.com/zarc-tech/zarc-claude-orchestrator
+module github.com/zarc-tech/claude-orchestrator
 
 go 1.25.5
 

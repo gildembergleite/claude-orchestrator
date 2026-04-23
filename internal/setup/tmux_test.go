@@ -17,14 +17,14 @@ func TestConfigureTmux_CreatesZarcConf(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Check zarc.conf was created
-	zarcConf := filepath.Join(tmuxDir, "zarc.conf")
+	// Check claude-orchestrator.conf was created
+	zarcConf := filepath.Join(tmuxDir, "claude-orchestrator.conf")
 	content, err := os.ReadFile(zarcConf)
 	if err != nil {
-		t.Fatalf("zarc.conf not created: %v", err)
+		t.Fatalf("claude-orchestrator.conf not created: %v", err)
 	}
 	if !strings.Contains(string(content), "tmux-resurrect") {
-		t.Fatal("zarc.conf should contain resurrect plugin")
+		t.Fatal("claude-orchestrator.conf should contain resurrect plugin")
 	}
 }
 

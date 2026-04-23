@@ -95,7 +95,7 @@ func RestoreIfNeeded(bin string) {
 	}
 
 	// Need a running server to restore — create a temp session
-	tmpSession := "zarc-restore"
+	tmpSession := "co-restore"
 	if err := exec.Command(bin, "new-session", "-d", "-s", tmpSession).Run(); err != nil {
 		return
 	}

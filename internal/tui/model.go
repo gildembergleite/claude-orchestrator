@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/zarc-tech/zarc-claude-orchestrator/internal/tmux"
+	"github.com/zarc-tech/claude-orchestrator/internal/tmux"
 )
 
 type state int
@@ -200,6 +200,7 @@ func (m AppModel) updateConfirmKill(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if chosen := m.subMenu.Chosen(); chosen != nil {
 		if chosen.ID == "yes" {
 			tmux.KillSession(m.tmuxBin, m.selected)
+			tmux.UnregisterSession(m.selected)
 			m.loadMainMenu()
 			return m, nil
 		}

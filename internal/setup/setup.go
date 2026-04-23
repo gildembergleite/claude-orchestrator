@@ -15,7 +15,7 @@ var (
 )
 
 // Run executes all setup steps in order.
-// If skipAlias is true, skips the interactive alias prompt and uses default "zarc".
+// If skipAlias is true, skips the interactive alias prompt and uses default "claude-orchestrator".
 func Run(skipAlias bool) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -35,7 +35,7 @@ func Run(skipAlias bool) error {
 		}
 	}
 	if !allFound {
-		return fmt.Errorf("dependências faltando — instale e rode 'zarc setup' novamente")
+		return fmt.Errorf("dependências faltando — instale e rode 'claude-orchestrator setup' novamente")
 	}
 	fmt.Printf(" %s Dependências verificadas\n", checkMark)
 
@@ -45,7 +45,7 @@ func Run(skipAlias bool) error {
 	if err := ConfigureTmux(tmuxDir, tmuxConf); err != nil {
 		return fmt.Errorf("tmux configuration failed: %w", err)
 	}
-	fmt.Printf(" %s tmux configurado (~/.tmux/zarc.conf)\n", checkMark)
+	fmt.Printf(" %s tmux configurado (~/.tmux/claude-orchestrator.conf)\n", checkMark)
 
 	// Step 3: Install tpm + plugins
 	pluginsDir := filepath.Join(home, ".tmux", "plugins")
@@ -69,29 +69,29 @@ func Run(skipAlias bool) error {
 	fmt.Printf(" %s CLAUDE.md configurado (memória persistente)\n", checkMark)
 
 	// Step 5: Configure shell alias
-	zarcBin, _ := os.Executable()
+	bin, _ := os.Executable()
 	var aliases []string
 	if skipAlias {
-		aliases = []string{"zarc"}
+		aliases = []string{"claude-orchestrator"}
 	} else {
 		aliases = promptAliasChoice()
 	}
-	shellResult, err := ConfigureShellAliases(zarcBin, aliases)
+	shellResult, err := ConfigureShellAliases(bin, aliases)
 	if err != nil {
 		fmt.Printf(" %s Alias — %v\n", warnMark, err)
 	} else {
 		fmt.Printf(" %s Alias configurado (%s): %s\n", checkMark, shellResult, strings.Join(aliases, ", "))
 	}
 
-	fmt.Printf("\n Pronto! Execute 'zarc' para começar.\n\n")
+	fmt.Printf("\n Pronto! Execute 'claude-orchestrator' para começar.\n\n")
 	return nil
 }
 
 func promptAliasChoice() []string {
 	fmt.Println()
 	fmt.Println(" Como deseja chamar o CLI?")
-	fmt.Println("   1) zarc + claude (dois aliases)")
-	fmt.Println("   2) Somente zarc")
+	fmt.Println("   1) claude-orchestrator + co (dois aliases)")
+	fmt.Println("   2) Somente claude-orchestrator")
 	fmt.Println("   3) Nome personalizado")
 	fmt.Print("   Escolha [1/2/3]: ")
 
@@ -101,16 +101,16 @@ func promptAliasChoice() []string {
 
 	switch choice {
 	case "1":
-		return []string{"zarc", "claude"}
+		return []string{"claude-orchestrator", "co"}
 	case "3":
 		fmt.Print("   Nome do alias: ")
 		name, _ := reader.ReadString('\n')
 		name = strings.TrimSpace(name)
 		if name == "" {
-			return []string{"zarc"}
+			return []string{"claude-orchestrator"}
 		}
 		return []string{name}
 	default:
-		return []string{"zarc"}
+		return []string{"claude-orchestrator"}
 	}
 }

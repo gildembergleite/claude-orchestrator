@@ -5,14 +5,10 @@ import (
 	"testing"
 )
 
-func TestRenderBanner_ContainsZARC(t *testing.T) {
+func TestRenderBanner_ContainsBlockArt(t *testing.T) {
 	output := RenderBanner()
-	if !strings.Contains(output, "ZARC") {
-		// The ASCII art uses block characters, not plain "ZARC"
-		// Check for a known character from the banner
-		if !strings.Contains(output, "███") {
-			t.Fatal("banner should contain ASCII art block characters")
-		}
+	if !strings.Contains(output, "███") {
+		t.Fatal("banner should contain ASCII art block characters")
 	}
 }
 

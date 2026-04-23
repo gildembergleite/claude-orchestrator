@@ -1,5 +1,5 @@
-BINARY=zarc
-CMD=./cmd/zarc
+BINARY=claude-orchestrator
+CMD=./cmd/claude-orchestrator
 
 .PHONY: build run test lint install clean
 

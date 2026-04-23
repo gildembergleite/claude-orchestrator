@@ -123,22 +123,22 @@ export PATH="$GOBIN:$PATH"
 
 # 9. Instalar zarc
 echo ""
-echo " Instalando zarc..."
-go install github.com/zarc-tech/zarc-claude-orchestrator/cmd/zarc@latest
-step "zarc instalado"
+echo " Instalando claude-orchestrator..."
+go install github.com/zarc-tech/claude-orchestrator/cmd/claude-orchestrator@latest
+step "claude-orchestrator instalado"
 
 # 10. Localizar o binário instalado e rodar setup
-ZARC_BIN=$(command -v zarc 2>/dev/null || echo "$GOBIN/zarc")
-if [ ! -f "$ZARC_BIN" ]; then
+CO_BIN=$(command -v claude-orchestrator 2>/dev/null || echo "$GOBIN/claude-orchestrator")
+if [ ! -f "$CO_BIN" ]; then
   # Fallback: procurar onde go install colocou
-  ZARC_BIN=$(find "$(go env GOPATH)" -name zarc -type f 2>/dev/null | head -1)
+  CO_BIN=$(find "$(go env GOPATH)" -name claude-orchestrator -type f 2>/dev/null | head -1)
 fi
 
-if [ -n "$ZARC_BIN" ] && [ -f "$ZARC_BIN" ]; then
+if [ -n "$CO_BIN" ] && [ -f "$CO_BIN" ]; then
   echo ""
-  echo " Executando zarc setup..."
+  echo " Executando claude-orchestrator setup..."
   echo ""
-  "$ZARC_BIN" setup --no-alias
+  "$CO_BIN" setup --no-alias
 else
   warn "Binário zarc não encontrado — rode 'zarc setup' manualmente após reiniciar o terminal"
 fi

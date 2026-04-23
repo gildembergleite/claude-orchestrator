@@ -6,18 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/zarc-tech/zarc-claude-orchestrator/configs"
+	"github.com/zarc-tech/claude-orchestrator/configs"
 )
 
-// ConfigureTmux creates ~/.tmux/zarc.conf and adds a source-file line to tmux.conf.
+// ConfigureTmux creates ~/.tmux/claude-orchestrator.conf and adds a source-file line to tmux.conf.
 func ConfigureTmux(tmuxDir, tmuxConfPath string) error {
 	// Ensure ~/.tmux/ exists
 	if err := os.MkdirAll(tmuxDir, 0755); err != nil {
 		return fmt.Errorf("failed to create %s: %w", tmuxDir, err)
 	}
 
-	// Write zarc.conf
-	zarcConfPath := filepath.Join(tmuxDir, "zarc.conf")
+	// Write claude-orchestrator.conf
+	zarcConfPath := filepath.Join(tmuxDir, "claude-orchestrator.conf")
 	if err := os.WriteFile(zarcConfPath, []byte(configs.TmuxConfig), 0644); err != nil {
 		return fmt.Errorf("failed to write %s: %w", zarcConfPath, err)
 	}
@@ -26,7 +26,7 @@ func ConfigureTmux(tmuxDir, tmuxConfPath string) error {
 	sourceLine := fmt.Sprintf("source-file %s", zarcConfPath)
 
 	existing, _ := os.ReadFile(tmuxConfPath)
-	if strings.Contains(string(existing), "zarc.conf") {
+	if strings.Contains(string(existing), "claude-orchestrator.conf") {
 		return nil // already configured
 	}
 
@@ -36,7 +36,7 @@ func ConfigureTmux(tmuxDir, tmuxConfPath string) error {
 	}
 	defer f.Close()
 
-	content := "\n# ─── zarc orchestrator ────────────────────────────────────────\n"
+	content := "\n# ─── claude-orchestrator ────────────────────────────────────────\n"
 	content += sourceLine + "\n"
 
 	if _, err := f.WriteString(content); err != nil {

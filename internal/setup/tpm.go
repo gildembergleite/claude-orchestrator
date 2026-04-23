@@ -41,7 +41,7 @@ func InstallTPM(pluginsDir string) (TPMResult, error) {
 		// Start a temporary tmux server to install plugins
 		home, _ := os.UserHomeDir()
 		tmuxConf := filepath.Join(home, ".tmux.conf")
-		tmpSession := "zarc-tpm-install"
+		tmpSession := "co-tpm-install"
 
 		// Start detached session with our config
 		startCmd := exec.Command("tmux", "-f", tmuxConf, "new-session", "-d", "-s", tmpSession)
