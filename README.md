@@ -6,23 +6,20 @@ Gerenciador de sessões tmux com TUI interativo para Claude Code, com configura�
 
 ## Instalação (comando único)
 
-**Pré-requisito:** [GitHub CLI (`gh`)](https://cli.github.com/) instalado e autenticado, com SSH key configurada no GitHub.
-
 **Zsh/Bash:**
 ```bash
-bash <(gh api repos/zarc-tech/claude-orchestrator/contents/install.sh --jq '.content' | base64 -d)
+bash <(curl -fsSL https://raw.githubusercontent.com/gildembergleite/claude-orchestrator/main/install.sh)
 ```
 
 **Fish:**
 ```fish
-gh api repos/zarc-tech/claude-orchestrator/contents/install.sh --jq '.content' | base64 -d | bash
+curl -fsSL https://raw.githubusercontent.com/gildembergleite/claude-orchestrator/main/install.sh | bash
 ```
 
 Esse comando instala e configura automaticamente:
 - Homebrew, Go, tmux, Node (se ausentes)
 - Claude Code
-- Git SSH para repos privados zarc-tech
-- GOPRIVATE para Go modules
+- Git SSH (`insteadOf` HTTPS → SSH para `github.com`)
 - PATH do Go
 - claude-orchestrator CLI + setup completo do ambiente
 

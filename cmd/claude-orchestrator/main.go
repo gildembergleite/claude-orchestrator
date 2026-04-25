@@ -7,10 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"github.com/zarc-tech/claude-orchestrator/internal/claude"
-	"github.com/zarc-tech/claude-orchestrator/internal/setup"
-	"github.com/zarc-tech/claude-orchestrator/internal/tmux"
-	"github.com/zarc-tech/claude-orchestrator/internal/tui"
+	"github.com/gildembergleite/claude-orchestrator/internal/claude"
+	"github.com/gildembergleite/claude-orchestrator/internal/setup"
+	"github.com/gildembergleite/claude-orchestrator/internal/tmux"
+	"github.com/gildembergleite/claude-orchestrator/internal/tui"
 )
 
 var version = "dev"

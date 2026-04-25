@@ -3,8 +3,8 @@ package setup
 import (
 	"os/exec"
 
-	"github.com/zarc-tech/claude-orchestrator/internal/claude"
-	"github.com/zarc-tech/claude-orchestrator/internal/tmux"
+	"github.com/gildembergleite/claude-orchestrator/internal/claude"
+	"github.com/gildembergleite/claude-orchestrator/internal/tmux"
 )
 
 // DepResult represents the result of a dependency check.

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/zarc-tech/claude-orchestrator/configs"
+	"github.com/gildembergleite/claude-orchestrator/configs"
 )
 
 // ConfigureClaude ensures ~/.claude/CLAUDE.md has the memory session section.

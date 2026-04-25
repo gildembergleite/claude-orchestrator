@@ -65,16 +65,7 @@ else
   step "Git configurado para repos privados (SSH)"
 fi
 
-# 7. GOPRIVATE
-CURRENT_GOPRIVATE=$(go env GOPRIVATE 2>/dev/null || echo "")
-if echo "$CURRENT_GOPRIVATE" | grep -q "github.com/zarc-tech"; then
-  skip "GOPRIVATE"
-else
-  go env -w GOPRIVATE="github.com/zarc-tech/*"
-  step "GOPRIVATE configurado"
-fi
-
-# 8. PATH — detectar GOBIN real e adicionar ao PATH
+# 7. PATH — detectar GOBIN real e adicionar ao PATH
 GOBIN=$(go env GOBIN 2>/dev/null)
 if [ -z "$GOBIN" ]; then
   GOBIN="$(go env GOPATH 2>/dev/null)/bin"
@@ -121,13 +112,13 @@ esac
 # Garantir que GOBIN está no PATH desta sessão
 export PATH="$GOBIN:$PATH"
 
-# 9. Instalar zarc
+# 8. Instalar claude-orchestrator
 echo ""
 echo " Instalando claude-orchestrator..."
-go install github.com/zarc-tech/claude-orchestrator/cmd/claude-orchestrator@latest
+go install github.com/gildembergleite/claude-orchestrator/cmd/claude-orchestrator@latest
 step "claude-orchestrator instalado"
 
-# 10. Localizar o binário instalado e rodar setup
+# 9. Localizar o binário instalado e rodar setup
 CO_BIN=$(command -v claude-orchestrator 2>/dev/null || echo "$GOBIN/claude-orchestrator")
 if [ ! -f "$CO_BIN" ]; then
   # Fallback: procurar onde go install colocou
@@ -140,12 +131,12 @@ if [ -n "$CO_BIN" ] && [ -f "$CO_BIN" ]; then
   echo ""
   "$CO_BIN" setup --no-alias
 else
-  warn "Binário zarc não encontrado — rode 'zarc setup' manualmente após reiniciar o terminal"
+  warn "Binário claude-orchestrator não encontrado — rode 'claude-orchestrator setup' manualmente após reiniciar o terminal"
 fi
 
 echo ""
 echo " ─────────────────────────────────────────────"
 echo " Instalação concluída!"
 echo ""
-echo " Reinicie o terminal e execute: zarc"
+echo " Reinicie o terminal e execute: claude-orchestrator"
 echo ""

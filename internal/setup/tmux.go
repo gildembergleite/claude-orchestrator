@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/zarc-tech/claude-orchestrator/configs"
+	"github.com/gildembergleite/claude-orchestrator/configs"
 )
 
 // ConfigureTmux creates ~/.tmux/claude-orchestrator.conf and adds a source-file line to tmux.conf.
