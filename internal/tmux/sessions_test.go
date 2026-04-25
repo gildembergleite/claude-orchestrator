@@ -1,106 +1,257 @@
 package tmux
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"testing"
+	"time"
 )
 
-func TestRegisterAndLoadSession(t *testing.T) {
+func setupTempStore(t *testing.T) string {
+	t.Helper()
 	tmp := t.TempDir()
-	orig := sessionsFile
-	sessionsFile = filepath.Join(tmp, "sessions.json")
-	defer func() { sessionsFile = orig }()
+	t.Setenv("XDG_CONFIG_HOME", tmp)
+	return filepath.Join(tmp, "claude-orchestrator", "sessions.json")
+}
+
+func TestRegisterAndGet(t *testing.T) {
+	path := setupTempStore(t)
 
 	if err := RegisterSession("backend", "/home/dev/api"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("register: %v", err)
 	}
 
-	sessions, err := LoadSessions()
+	sess, ok, err := GetSession("backend")
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("get: %v", err)
 	}
-	if sessions["backend"] != "/home/dev/api" {
-		t.Fatalf("expected /home/dev/api, got %s", sessions["backend"])
+	if !ok {
+		t.Fatal("expected session to exist")
+	}
+	if sess.Name != "backend" || sess.Dir != "/home/dev/api" {
+		t.Fatalf("unexpected session: %+v", sess)
+	}
+	if sess.CreatedAt.IsZero() || sess.LastAttachedAt.IsZero() {
+		t.Fatal("timestamps should be populated")
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat sessions.json: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
+		t.Fatalf("expected mode 0600, got %v", info.Mode().Perm())
 	}
 }
 
 func TestUnregisterSession(t *testing.T) {
-	tmp := t.TempDir()
-	orig := sessionsFile
-	sessionsFile = filepath.Join(tmp, "sessions.json")
-	defer func() { sessionsFile = orig }()
+	setupTempStore(t)
 
 	RegisterSession("backend", "/home/dev/api")
 	RegisterSession("frontend", "/home/dev/app")
 
 	if err := UnregisterSession("backend"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("unregister: %v", err)
 	}
 
-	sessions, _ := LoadSessions()
-	if _, ok := sessions["backend"]; ok {
-		t.Fatal("backend should have been removed")
+	if _, ok, _ := GetSession("backend"); ok {
+		t.Fatal("backend should be gone")
 	}
-	if sessions["frontend"] != "/home/dev/app" {
-		t.Fatal("frontend should still exist")
+	if _, ok, _ := GetSession("frontend"); !ok {
+		t.Fatal("frontend should remain")
 	}
 }
 
 func TestUnregisterNonExistent(t *testing.T) {
-	tmp := t.TempDir()
-	orig := sessionsFile
-	sessionsFile = filepath.Join(tmp, "sessions.json")
-	defer func() { sessionsFile = orig }()
-
-	// Should not error on missing file
+	setupTempStore(t)
 	if err := UnregisterSession("nope"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("unregister non-existent: %v", err)
 	}
 }
 
-func TestRegisterOverwrites(t *testing.T) {
-	tmp := t.TempDir()
-	orig := sessionsFile
-	sessionsFile = filepath.Join(tmp, "sessions.json")
-	defer func() { sessionsFile = orig }()
+func TestRegisterOverwritesDirAndTouchesAttachment(t *testing.T) {
+	setupTempStore(t)
 
 	RegisterSession("backend", "/old/path")
+	first, _, _ := GetSession("backend")
+
+	time.Sleep(2 * time.Millisecond)
 	RegisterSession("backend", "/new/path")
+	second, _, _ := GetSession("backend")
 
-	sessions, _ := LoadSessions()
-	if sessions["backend"] != "/new/path" {
-		t.Fatalf("expected /new/path, got %s", sessions["backend"])
+	if second.Dir != "/new/path" {
+		t.Fatalf("expected /new/path, got %s", second.Dir)
+	}
+	if !second.CreatedAt.Equal(first.CreatedAt) {
+		t.Fatal("CreatedAt should be preserved on overwrite")
+	}
+	if !second.LastAttachedAt.After(first.LastAttachedAt) {
+		t.Fatal("LastAttachedAt should advance on overwrite")
 	}
 }
 
-func TestLoadSessionsEmptyFile(t *testing.T) {
-	tmp := t.TempDir()
-	orig := sessionsFile
-	sessionsFile = filepath.Join(tmp, "sessions.json")
-	defer func() { sessionsFile = orig }()
+func TestTouchSession(t *testing.T) {
+	setupTempStore(t)
 
-	// No file exists
-	sessions, err := LoadSessions()
-	if err == nil {
-		t.Fatal("expected error for missing file")
+	RegisterSession("backend", "/home/dev/api")
+	before, _, _ := GetSession("backend")
+
+	time.Sleep(2 * time.Millisecond)
+	if err := TouchSession("backend"); err != nil {
+		t.Fatalf("touch: %v", err)
 	}
-	if sessions != nil {
-		t.Fatal("expected nil sessions")
+	after, _, _ := GetSession("backend")
+
+	if !after.LastAttachedAt.After(before.LastAttachedAt) {
+		t.Fatal("LastAttachedAt should advance on touch")
+	}
+	if !after.CreatedAt.Equal(before.CreatedAt) {
+		t.Fatal("CreatedAt should not change on touch")
 	}
 }
 
-func TestSessionsFileCreatesDir(t *testing.T) {
-	tmp := t.TempDir()
-	orig := sessionsFile
-	sessionsFile = filepath.Join(tmp, "subdir", "deep", "sessions.json")
-	defer func() { sessionsFile = orig }()
+func TestTouchNonExistentIsNoOp(t *testing.T) {
+	setupTempStore(t)
+	if err := TouchSession("nope"); err != nil {
+		t.Fatalf("touch non-existent: %v", err)
+	}
+	if _, ok, _ := GetSession("nope"); ok {
+		t.Fatal("touch must not create entry")
+	}
+}
 
-	if err := RegisterSession("test", "/tmp"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestListRegisteredOrderedByLastAttachedDesc(t *testing.T) {
+	setupTempStore(t)
+
+	RegisterSession("a", "/a")
+	time.Sleep(2 * time.Millisecond)
+	RegisterSession("b", "/b")
+	time.Sleep(2 * time.Millisecond)
+	RegisterSession("c", "/c")
+
+	list, err := ListRegistered()
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) != 3 {
+		t.Fatalf("expected 3 sessions, got %d", len(list))
+	}
+	if list[0].Name != "c" || list[1].Name != "b" || list[2].Name != "a" {
+		t.Fatalf("expected [c, b, a], got [%s, %s, %s]", list[0].Name, list[1].Name, list[2].Name)
+	}
+}
+
+func TestEmptyStoreLoadsCleanly(t *testing.T) {
+	setupTempStore(t)
+
+	list, err := ListRegistered()
+	if err != nil {
+		t.Fatalf("list empty: %v", err)
+	}
+	if len(list) != 0 {
+		t.Fatalf("expected empty list, got %d", len(list))
+	}
+	if _, ok, err := GetSession("nope"); err != nil || ok {
+		t.Fatal("get on empty store should be (Session{}, false, nil)")
+	}
+}
+
+func TestLegacyMigration(t *testing.T) {
+	path := setupTempStore(t)
+
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	legacy := []byte(`{"backend":"/home/dev/api","frontend":"/home/dev/app"}`)
+	if err := os.WriteFile(path, legacy, 0644); err != nil {
+		t.Fatalf("seed legacy: %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(tmp, "subdir", "deep")); err != nil {
-		t.Fatal("directory should have been created")
+	list, err := ListRegistered()
+	if err != nil {
+		t.Fatalf("list after legacy: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("expected 2 sessions migrated, got %d", len(list))
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read after migration: %v", err)
+	}
+	var s store
+	if err := json.Unmarshal(raw, &s); err != nil {
+		t.Fatalf("unmarshal v1: %v", err)
+	}
+	if s.Version != 1 || len(s.Sessions) != 2 {
+		t.Fatalf("file not v1 after migration: %+v", s)
+	}
+	for name, sess := range s.Sessions {
+		if sess.Dir == "" {
+			t.Fatalf("session %s has empty dir", name)
+		}
+		if sess.CreatedAt.IsZero() || sess.LastAttachedAt.IsZero() {
+			t.Fatalf("session %s missing timestamps", name)
+		}
+	}
+}
+
+func TestRegisterIsConcurrencySafe(t *testing.T) {
+	setupTempStore(t)
+
+	const n = 20
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			name := []byte("sess-")
+			name = append(name, byte('a'+i%26))
+			RegisterSession(string(name), "/d")
+		}()
+	}
+	wg.Wait()
+
+	list, err := ListRegistered()
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(list) == 0 {
+		t.Fatal("expected at least one session after concurrent writes")
+	}
+}
+
+func TestXDGConfigHomeRespected(t *testing.T) {
+	setupTempStore(t)
+
+	if err := RegisterSession("x", "/d"); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	if got := configDir(); got != filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "claude-orchestrator") {
+		t.Fatalf("XDG not honored: %s", got)
+	}
+}
+
+func TestNoLeakedTempFiles(t *testing.T) {
+	path := setupTempStore(t)
+	RegisterSession("a", "/a")
+	RegisterSession("b", "/b")
+	UnregisterSession("a")
+
+	dir := filepath.Dir(path)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("readdir: %v", err)
+	}
+	for _, e := range entries {
+		name := e.Name()
+		if name == "sessions.json" || name == "sessions.lock" {
+			continue
+		}
+		t.Fatalf("unexpected residual file: %s", name)
 	}
 }

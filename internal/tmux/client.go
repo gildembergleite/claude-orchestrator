@@ -22,25 +22,20 @@ func IsInsideTmux() bool {
 	return os.Getenv("TMUX") != ""
 }
 
-// Session represents a tmux session.
-type Session struct {
-	Name string
-}
-
-// ListSessions returns all active tmux sessions.
-func ListSessions(bin string) ([]Session, error) {
+// ListSessions returns the names of all active tmux sessions.
+func ListSessions(bin string) ([]string, error) {
 	out, err := exec.Command(bin, "ls", "-F", "#{session_name}").Output()
 	if err != nil {
 		// No server running = no sessions
 		return nil, nil
 	}
-	var sessions []Session
+	var names []string
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		if line != "" {
-			sessions = append(sessions, Session{Name: line})
+			names = append(names, line)
 		}
 	}
-	return sessions, nil
+	return names, nil
 }
 
 // NewSession creates a new tmux session and returns after detaching.

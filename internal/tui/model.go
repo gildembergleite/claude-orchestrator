@@ -29,7 +29,7 @@ type AppModel struct {
 	subMenu    MenuModel
 	dirBrowser DirBrowserModel
 	nameInput  InputModel
-	sessions   []tmux.Session
+	sessions   []string
 	selected   string // selected session name
 	err        error
 	quitting   bool
@@ -55,8 +55,8 @@ func (m *AppModel) loadMainMenu() {
 	m.sessions = sessions
 
 	items := []MenuItem{{Label: "[+] Nova sessão", ID: "new"}}
-	for _, s := range sessions {
-		items = append(items, MenuItem{Label: s.Name, ID: "session:" + s.Name})
+	for _, name := range sessions {
+		items = append(items, MenuItem{Label: name, ID: "session:" + name})
 	}
 
 	m.menu = NewMenu("Selecione uma sessão", items)

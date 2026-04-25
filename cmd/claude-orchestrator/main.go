@@ -82,6 +82,7 @@ func runTUI(cmd *cobra.Command, args []string) error {
 		return tmux.AttachSession(tmuxBin, m.SessionName)
 
 	case "attach":
+		tmux.TouchSession(m.SessionName)
 		if insideTmux {
 			return tmux.SwitchSession(tmuxBin, m.SessionName)
 		}
