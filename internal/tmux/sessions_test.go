@@ -236,6 +236,63 @@ func TestXDGConfigHomeRespected(t *testing.T) {
 	}
 }
 
+func TestCleanupOrphansRemovesMissingDirs(t *testing.T) {
+	setupTempStore(t)
+
+	alive := t.TempDir()
+	dead := filepath.Join(t.TempDir(), "gone")
+
+	RegisterSession("live", alive)
+	RegisterSession("orphan", dead)
+
+	if _, err := os.Stat(dead); err == nil {
+		t.Fatal("dead dir should not exist for this test")
+	}
+
+	removed, err := CleanupOrphans()
+	if err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if removed != 1 {
+		t.Fatalf("expected 1 removed, got %d", removed)
+	}
+	if _, ok, _ := GetSession("orphan"); ok {
+		t.Fatal("orphan should be gone")
+	}
+	if _, ok, _ := GetSession("live"); !ok {
+		t.Fatal("live should remain")
+	}
+}
+
+func TestCleanupOrphansEmpty(t *testing.T) {
+	setupTempStore(t)
+
+	removed, err := CleanupOrphans()
+	if err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if removed != 0 {
+		t.Fatalf("expected 0 removed on empty store, got %d", removed)
+	}
+}
+
+func TestCleanupOrphansAllAlive(t *testing.T) {
+	setupTempStore(t)
+
+	a := t.TempDir()
+	b := t.TempDir()
+	RegisterSession("a", a)
+	RegisterSession("b", b)
+
+	removed, err := CleanupOrphans()
+	if err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if removed != 0 {
+		t.Fatalf("expected 0 removed, got %d", removed)
+	}
+}
+
 func TestNoLeakedTempFiles(t *testing.T) {
 	path := setupTempStore(t)
 	RegisterSession("a", "/a")

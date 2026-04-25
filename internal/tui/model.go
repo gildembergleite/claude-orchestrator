@@ -5,9 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gildembergleite/claude-orchestrator/internal/tmux"
+)
+
+const (
+	dirColumnWidth  = 36
+	idleColumnWidth = 10
 )
 
 type state int
@@ -51,12 +57,28 @@ func NewApp(tmuxBin, claudeBin string) AppModel {
 }
 
 func (m *AppModel) loadMainMenu() {
+	tmux.CleanupOrphans()
+
 	sessions, _ := tmux.ListSessions(m.tmuxBin)
 	m.sessions = sessions
 
-	items := []MenuItem{{Label: "[+] Nova sessão", ID: "new"}}
+	nameWidth := 8
 	for _, name := range sessions {
-		items = append(items, MenuItem{Label: name, ID: "session:" + name})
+		if len(name) > nameWidth {
+			nameWidth = len(name)
+		}
+	}
+
+	items := []MenuItem{{Label: "[+] Nova sessão", ID: "new"}}
+	now := time.Now()
+	for _, name := range sessions {
+		label := padRight(name, nameWidth)
+		if sess, ok, _ := tmux.GetSession(name); ok {
+			dir := truncateLeft(collapsePath(sess.Dir), dirColumnWidth)
+			idle := formatIdle(now.Sub(sess.LastAttachedAt))
+			label = fmt.Sprintf("%s  %s  %s", label, padRight(dir, dirColumnWidth), padLeft(idle, idleColumnWidth))
+		}
+		items = append(items, MenuItem{Label: label, ID: "session:" + name})
 	}
 
 	m.menu = NewMenu("Selecione uma sessão", items)

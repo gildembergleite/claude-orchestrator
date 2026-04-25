@@ -58,6 +58,25 @@ func UnregisterSession(name string) error {
 	return mutate(func(s *store) { delete(s.Sessions, name) })
 }
 
+// CleanupOrphans removes registered sessions whose Dir no longer exists.
+// Returns the count removed. Only os.IsNotExist triggers removal — other
+// stat errors (EACCES, EBUSY) preserve the entry.
+func CleanupOrphans() (int, error) {
+	var removed int
+	err := mutate(func(s *store) {
+		for name, sess := range s.Sessions {
+			if _, err := os.Stat(sess.Dir); err != nil && errors.Is(err, os.ErrNotExist) {
+				delete(s.Sessions, name)
+				removed++
+			}
+		}
+	})
+	if err != nil {
+		return 0, err
+	}
+	return removed, nil
+}
+
 func TouchSession(name string) error {
 	return mutate(func(s *store) {
 		sess, ok := s.Sessions[name]
