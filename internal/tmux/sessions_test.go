@@ -93,6 +93,46 @@ func TestRegisterOverwritesDirAndTouchesAttachment(t *testing.T) {
 	}
 }
 
+func TestRegisterWithCommand(t *testing.T) {
+	setupTempStore(t)
+
+	if err := RegisterSession("a", "/d", WithCommand("hello")); err != nil {
+		t.Fatalf("register with command: %v", err)
+	}
+	sess, _, _ := GetSession("a")
+	if sess.Command != "hello" {
+		t.Fatalf("expected Command='hello', got %q", sess.Command)
+	}
+}
+
+func TestRegisterOptionsOverwriteOnUpdate(t *testing.T) {
+	setupTempStore(t)
+
+	RegisterSession("a", "/d", WithCommand("first"), WithTags("x", "y"), WithWorkspace("ws1"))
+	RegisterSession("a", "/d", WithCommand("second"))
+
+	sess, _, _ := GetSession("a")
+	if sess.Command != "second" {
+		t.Fatalf("expected Command='second', got %q", sess.Command)
+	}
+	// Tags e Workspace devem ser preservadas (não passamos opção pra elas)
+	if len(sess.Tags) != 2 || sess.Workspace != "ws1" {
+		t.Fatalf("expected tags/workspace preserved, got tags=%v ws=%q", sess.Tags, sess.Workspace)
+	}
+}
+
+func TestRegisterOptionsClearWithEmpty(t *testing.T) {
+	setupTempStore(t)
+
+	RegisterSession("a", "/d", WithCommand("set"))
+	RegisterSession("a", "/d", WithCommand(""))
+
+	sess, _, _ := GetSession("a")
+	if sess.Command != "" {
+		t.Fatalf("expected Command cleared, got %q", sess.Command)
+	}
+}
+
 func TestTouchSession(t *testing.T) {
 	setupTempStore(t)
 

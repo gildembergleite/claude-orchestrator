@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
 	"github.com/gildembergleite/claude-orchestrator/internal/claude"
 	"github.com/gildembergleite/claude-orchestrator/internal/setup"
 	"github.com/gildembergleite/claude-orchestrator/internal/tmux"
 	"github.com/gildembergleite/claude-orchestrator/internal/tui"
+	"github.com/spf13/cobra"
 )
 
 var version = "dev"
@@ -23,20 +23,97 @@ func main() {
 		RunE:    runTUI,
 	}
 
+	rootCmd.AddCommand(newSetupCmd())
+	rootCmd.AddCommand(newListCmd())
+	rootCmd.AddCommand(newNewCmd())
+	rootCmd.AddCommand(newAttachCmd())
+	rootCmd.AddCommand(newKillCmd())
+
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}
+
+func newSetupCmd() *cobra.Command {
 	var noAlias bool
-	setupCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Configure tmux, CLAUDE.md, and shell alias",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return setup.Run(noAlias)
 		},
 	}
-	setupCmd.Flags().BoolVar(&noAlias, "no-alias", false, "Skip alias prompt, use default 'claude-orchestrator'")
+	cmd.Flags().BoolVar(&noAlias, "no-alias", false, "Skip alias prompt, use default 'claude-orchestrator'")
+	return cmd
+}
 
-	rootCmd.AddCommand(setupCmd)
+func newListCmd() *cobra.Command {
+	var jsonMode bool
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "Lista sessões registradas",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runList(os.Stdout, jsonMode)
+		},
+	}
+	cmd.Flags().BoolVar(&jsonMode, "json", false, "Saída em JSON")
+	return cmd
+}
 
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+func newNewCmd() *cobra.Command {
+	var dir, name, prompt string
+	cmd := &cobra.Command{
+		Use:   "new",
+		Short: "Cria sessão tmux + Claude sem TUI",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tmuxBin, err := tmux.FindBinary()
+			if err != nil {
+				return err
+			}
+			claudeBin, err := claude.Resolve(nil)
+			if err != nil {
+				return err
+			}
+			return runNew(NewArgs{
+				TmuxBin: tmuxBin, ClaudeBin: claudeBin,
+				Dir: dir, Name: name, Prompt: prompt,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "", "Diretório da sessão (obrigatório)")
+	cmd.Flags().StringVar(&name, "name", "", "Nome da sessão (default: basename de --dir)")
+	cmd.Flags().StringVar(&prompt, "prompt", "", "Prompt inicial passado ao claude")
+	cmd.MarkFlagRequired("dir")
+	return cmd
+}
+
+func newAttachCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "attach <name>",
+		Short: "Attach numa sessão existente",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tmuxBin, err := tmux.FindBinary()
+			if err != nil {
+				return err
+			}
+			return runAttach(tmuxBin, args[0])
+		},
+	}
+}
+
+func newKillCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "kill <name>",
+		Short: "Mata sessão tmux e desregistra",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			tmuxBin, err := tmux.FindBinary()
+			if err != nil {
+				return err
+			}
+			return runKill(tmuxBin, args[0])
+		},
 	}
 }
 
@@ -53,12 +130,10 @@ func runTUI(cmd *cobra.Command, args []string) error {
 
 	insideTmux := tmux.IsInsideTmux()
 
-	// Restore sessions from resurrect if none exist (e.g. after reboot)
 	tmux.RestoreIfNeeded(tmuxBin)
 
-	// Run TUI
 	app := tui.NewApp(tmuxBin, claudeBin)
-	p := tea.NewProgram(app)
+	p := tea.NewProgram(app, tea.WithAltScreen())
 	result, err := p.Run()
 	if err != nil {
 		return err

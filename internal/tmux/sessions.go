@@ -40,17 +40,38 @@ func configDir() string {
 func sessionsPath() string { return filepath.Join(configDir(), "sessions.json") }
 func lockPath() string     { return filepath.Join(configDir(), "sessions.lock") }
 
-func RegisterSession(name, dir string) error {
+type RegisterOption func(*Session)
+
+func WithCommand(cmd string) RegisterOption {
+	return func(s *Session) { s.Command = cmd }
+}
+
+func WithTags(tags ...string) RegisterOption {
+	return func(s *Session) { s.Tags = tags }
+}
+
+func WithWorkspace(ws string) RegisterOption {
+	return func(s *Session) { s.Workspace = ws }
+}
+
+func WithEnv(env map[string]string) RegisterOption {
+	return func(s *Session) { s.Env = env }
+}
+
+func RegisterSession(name, dir string, opts ...RegisterOption) error {
 	return mutate(func(s *store) {
 		now := time.Now().UTC()
-		existing, ok := s.Sessions[name]
+		sess, ok := s.Sessions[name]
 		if !ok {
-			s.Sessions[name] = Session{Dir: dir, CreatedAt: now, LastAttachedAt: now}
-			return
+			sess = Session{Dir: dir, CreatedAt: now, LastAttachedAt: now}
+		} else {
+			sess.Dir = dir
+			sess.LastAttachedAt = now
 		}
-		existing.Dir = dir
-		existing.LastAttachedAt = now
-		s.Sessions[name] = existing
+		for _, opt := range opts {
+			opt(&sess)
+		}
+		s.Sessions[name] = sess
 	})
 }
 
